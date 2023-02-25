@@ -13,6 +13,8 @@
     "deploy": "wrangler publish"
   },
   "dependencies": {
-    "got": "^12.5.1"
+    "@types/superagent": "^4.1.16",
+    "got": "^12.5.1",
+    "superagent": "^8.0.9"
   }
 }

@@ -1,7 +1,4 @@
-name = "wrangler-coda-ha"
+name = "wrangler-google-cal-coven"
 main = "src/index.ts"
 compatibility_date = "2022-09-29"
 node_compat = true
-
-[triggers]
-crons = [ "2/15 * * * *" ]
