@@ -19,6 +19,12 @@ const calendarIds = config.calendarIds;
 const resource = config.resource;
 const apiKey = config.apiKey;
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
+  "Access-Control-Max-Age": "86400",
+};
+
 export interface Env {
   // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
   // MY_KV_NAMESPACE: KVNamespace;
@@ -32,11 +38,32 @@ export interface Env {
 
 const ___ = undefined;
 
-const runHandler = async (
-  controller: ScheduledController,
-  env: Env,
-  ctx: ExecutionContext
-): Promise<any> => {
+async function handleOptions(request) {
+  if (
+    request.headers.get("Origin") !== null &&
+    request.headers.get("Access-Control-Request-Method") !== null &&
+    request.headers.get("Access-Control-Request-Headers") !== null
+  ) {
+    // Handle CORS preflight requests.
+    return new Response(null, {
+      headers: {
+        ...corsHeaders,
+        "Access-Control-Allow-Headers": request.headers.get(
+          "Access-Control-Request-Headers"
+        ),
+      },
+    });
+  } else {
+    // Handle standard OPTIONS request.
+    return new Response(null, {
+      headers: {
+        Allow: "GET, HEAD, POST, OPTIONS",
+      },
+    });
+  }
+}
+
+const runHandler = async (event: any): Promise<any> => {
   const calendars = await Promise.all(
     calendarIds.map(async (cal) => {
       const url = `${baseUrl + cal.id + resource}?key=${apiKey}`;
@@ -69,7 +96,21 @@ export default {
     await runHandler(...props);
   },
   async fetch(...props: any[]) {
+    if (props[0].method === "OPTIONS") {
+      // Handle CORS preflight requests
+      return handleOptions(request);
+    }
     const results = await runHandler(...props);
-    return new Response(results, {});
+
+    const response = new Response(results, {});
+    // Set CORS headers
+
+    const url = new URL(props[0].url);
+    response.headers.set("Access-Control-Allow-Origin", url.origin);
+
+    // Append to/Add Vary header so browser will cache response correctly
+    response.headers.append("Vary", "Origin");
+
+    return response;
   },
 };
