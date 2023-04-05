@@ -64,26 +64,49 @@ async function handleOptions(request) {
 }
 
 const runHandler = async (event: any): Promise<any> => {
+  console.log(event.url);
+  const { searchParams } = new URL(event.url);
+  console.log("searchParams", searchParams);
+  const calId = searchParams.get("calid");
+
+  console.log("calId", calId);
+
+  if (!calId) {
+    const error = new Error("No calendar id provided");
+    error.status = 400;
+    error.statusText = "Bad Request";
+    throw error;
+  }
+
   const calendars = await Promise.all(
-    calendarIds.map(async (cal) => {
-      const url = `${baseUrl + cal.id + resource}?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          referer: "https://covenofthewoods.church",
-          origin: "https://covenofthewoods.church",
-        },
-      });
-      const results = await res.json();
-      const events = results.items
-        .filter((item) => item.status === "confirmed")
-        .map((item) => ({
-          start: item.start.date,
-          end: item.end.date,
-          category: item.summary.split("-")[1].trim(),
-        }));
-      return { events };
-    })
+    [{ id: calId }]
+      .map(async (cal) => {
+        const url = `${baseUrl + cal.id + resource}?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            referer: "https://covenofthewoods.church",
+            origin: "https://covenofthewoods.church",
+          },
+        });
+        const results = await res.json();
+        console.log("results", results);
+        const events = results.items
+          .filter((item) => item.status === "confirmed")
+          .map((item) => ({
+            start: item.start.date,
+            end: item.end.date,
+            category: item.summary.split("-")[1].trim(),
+          }));
+        return { events };
+      })
+      .catch((e) => {
+        console.log("error", e);
+        const error = new Error("Error fetching calendar");
+        error.status = 500;
+        error.statusText = "Internal Server Error";
+        throw error;
+      })
   );
   const calendarsFormatted = calendars.reduce((prev, next) =>
     Object.assign({}, prev, next)
@@ -100,17 +123,26 @@ export default {
       // Handle CORS preflight requests
       return handleOptions(request);
     }
-    const results = await runHandler(...props);
 
-    const response = new Response(results, {});
-    // Set CORS headers
+    try {
+      const results = await runHandler(...props);
 
-    const url = new URL(props[0].url);
-    response.headers.set("Access-Control-Allow-Origin", url.origin);
+      const response = new Response(results, {});
+      // Set CORS headers
 
-    // Append to/Add Vary header so browser will cache response correctly
-    response.headers.append("Vary", "Origin");
+      // const url = new URL(props[0].url);
+      response.headers.set("Access-Control-Allow-Origin", "*");
 
-    return response;
+      // Append to/Add Vary header so browser will cache response correctly
+      response.headers.append("Vary", "Origin");
+
+      return response;
+    } catch (e) {
+      console.log("error", e);
+      return new Response("Error", {
+        status: e.status,
+        statusText: e.statusText,
+      });
+    }
   },
 };

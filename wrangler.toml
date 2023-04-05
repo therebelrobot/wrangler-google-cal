@@ -1,4 +1,4 @@
-name = "wrangler-google-cal-coven"
+name = "wrangler-google-cal"
 main = "src/index.ts"
 compatibility_date = "2022-09-29"
 node_compat = true
