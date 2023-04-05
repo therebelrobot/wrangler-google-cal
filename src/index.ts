@@ -79,35 +79,33 @@ const runHandler = async (event: any): Promise<any> => {
   }
 
   const calendars = await Promise.all(
-    [{ id: calId }]
-      .map(async (cal) => {
-        const url = `${baseUrl + cal.id + resource}?key=${apiKey}`;
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            referer: "https://covenofthewoods.church",
-            origin: "https://covenofthewoods.church",
-          },
-        });
-        const results = await res.json();
-        console.log("results", results);
-        const events = results.items
-          .filter((item) => item.status === "confirmed")
-          .map((item) => ({
-            start: item.start.date,
-            end: item.end.date,
-            category: item.summary.split("-")[1].trim(),
-          }));
-        return { events };
-      })
-      .catch((e) => {
-        console.log("error", e);
-        const error = new Error("Error fetching calendar");
-        error.status = 500;
-        error.statusText = "Internal Server Error";
-        throw error;
-      })
-  );
+    [{ id: calId }].map(async (cal) => {
+      const url = `${baseUrl + cal.id + resource}?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          referer: "https://covenofthewoods.church",
+          origin: "https://covenofthewoods.church",
+        },
+      });
+      const results = await res.json();
+      console.log("results", results);
+      const events = results.items
+        .filter((item) => item.status === "confirmed")
+        .map((item) => ({
+          start: item.start.date,
+          end: item.end.date,
+          category: item.summary.split("-")[1].trim(),
+        }));
+      return { events };
+    })
+  ).catch((e) => {
+    console.log("error", e);
+    const error = new Error("Error fetching calendar");
+    error.status = 500;
+    error.statusText = "Internal Server Error";
+    throw error;
+  });
   const calendarsFormatted = calendars.reduce((prev, next) =>
     Object.assign({}, prev, next)
   );
