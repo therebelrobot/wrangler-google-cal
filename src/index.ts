@@ -64,12 +64,8 @@ async function handleOptions(request) {
 }
 
 const runHandler = async (event: any): Promise<any> => {
-  console.log(event.url);
   const { searchParams } = new URL(event.url);
-  console.log("searchParams", searchParams);
   const calId = searchParams.get("calid");
-
-  console.log("calId", calId);
 
   if (!calId) {
     const error = new Error("No calendar id provided");
@@ -77,10 +73,21 @@ const runHandler = async (event: any): Promise<any> => {
     error.statusText = "Bad Request";
     throw error;
   }
+  console.log(event.url);
+  console.log("searchParams", searchParams);
+  console.log("calId", calId);
 
   const calendars = await Promise.all(
     [{ id: calId }].map(async (cal) => {
-      const url = `${baseUrl + cal.id + resource}?key=${apiKey}`;
+      const url = `${baseUrl + cal.id + resource}?${new URLSearchParams({
+        key: apiKey,
+        // timeMin to the beginning of today with hours, minutes, seconds, and milliseconds set to 0
+        timeMin: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+        // timeMax to the end of 28 days from today with hours, minutes, seconds, and milliseconds set to 0
+        timeMax: new Date(
+          new Date().setDate(new Date().getDate() + 28)
+        ).toISOString(),
+      })}`;
       const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -90,6 +97,7 @@ const runHandler = async (event: any): Promise<any> => {
       });
       const results = await res.json();
       console.log("results", results);
+      console.log("results.error.errors", results.error?.errors);
       const events = results.items
         .filter((item) => item.status === "confirmed")
         .map((item) => ({
